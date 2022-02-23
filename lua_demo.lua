@@ -24,9 +24,9 @@ say(hello .. world)
 -- If statements
 --
 if world == 'world' then
-    print('world!')
+    print('world222!')
 else
-    print('hello!')
+    print('hello222!')
 end
 
 --

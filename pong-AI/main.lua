@@ -50,6 +50,11 @@ VIRTUAL_HEIGHT = 243
 -- paddle movement speed
 PADDLE_SPEED = 200
 
+-- Mode
+mode = 1
+
+-- Difficulty
+diff_speed = 1
 --[[
     Called just once at the beginning of the game; used to set up
     game objects, variables, etc. and prepare the game world.
@@ -115,7 +120,7 @@ function love.load()
     -- 2. 'serve' (waiting on a key press to serve the ball)
     -- 3. 'play' (the ball is in play, bouncing between paddles)
     -- 4. 'done' (the game is over, with a victor, ready for restart)
-    gameState = 'start'
+    gameState = 'home'
 end
 
 --[[
@@ -227,18 +232,90 @@ function love.update(dt)
             end
         end
     end
+          
+--[[
+    A callback that processes key strokes as they happen, just the once.
+    Does not account for keys that are held down, which is handled by a
+    separate function (`love.keyboard.isDown`). Useful for when we want
+    things to happen right away, just once, like when we want to quit.
+]]
+function love.keypressed(key)
+    -- `key` will be whatever key this callback detected as pressed
+    if gameState == 'home' then
+        if key == 'escape' then
+            -- the function LÖVE2D uses to quit the application
+            love.event.quit()
+        elseif key == '1' then 
+            mode = 1
+            gameState = 'start'
+        elseif key == '2' then
+            mode =2 
+            gameState = 'difficulty'
+        end        
+        -- if we press enter during either the start or serve phase, it should
+        -- transition to the next appropriate state
+    elseif gameState == 'mode' then
+        if key == 'escape' then
+            gameState = 'home'
+        end
+    elseif gameState == 'difficulty' then
+        if key == 'escape' then
+            gameState = 'home'
+        elseif key == '1' then
+            gameState = 'easy'
+        elseif key == '2' then
+            gameState = 'hard'
+        elseif key == '3' then
+            gameState = 'impossible'
+        end
+        
+    
+    elseif gameState == 'start' then
+        if key == 'escape' then
+            gameState = 'home'
+        elseif key== 'return' or 'enter' then 
+            gameState = 'serve'
+        end
+     elseif gameState == 'serve' then
+        if key == 'escape' then
+            gameState = 'home'
+        elseif key== 'return' or 'enter' then 
+        gameState = 'play'
+        end
+    
+    elseif gameState == 'done' then
+        if key == 'escape' then
+            gameState = 'home'
+            ball:reset()
+            player1Score = 0
+            player2Score = 0
+        else
+        -- game is simply in a restart phase here, but will set the serving
+        -- player to the opponent of whomever won for fairness!
+            gameState = 'serve'
 
-    --
+            ball:reset()
+
+        -- reset scores to 0
+            player1Score = 0
+            player2Score = 0
+
+        -- decide serving player as the opposite of who won
+            if winningPlayer == 1 then
+                servingPlayer = 2
+            else
+                servingPlayer = 1
+            end
+        end    
+    end
+  
+end
+--
     -- paddles can move no matter what state we're in
     --
     -- player 1
-    if love.keyboard.isDown('w') then
-        player1.dy = -PADDLE_SPEED
-    elseif love.keyboard.isDown('s') then
-        player1.dy = PADDLE_SPEED
-    else
-        player1.dy = 0
-    end
+    player1Move(mode,difficulty)
+    
 
     -- player 2
     if love.keyboard.isDown('up') then
@@ -257,46 +334,9 @@ function love.update(dt)
 
     player1:update(dt)
     player2:update(dt)
+
 end
 
---[[
-    A callback that processes key strokes as they happen, just the once.
-    Does not account for keys that are held down, which is handled by a
-    separate function (`love.keyboard.isDown`). Useful for when we want
-    things to happen right away, just once, like when we want to quit.
-]]
-function love.keypressed(key)
-    -- `key` will be whatever key this callback detected as pressed
-    if key == 'escape' then
-        -- the function LÖVE2D uses to quit the application
-        love.event.quit()
-    -- if we press enter during either the start or serve phase, it should
-    -- transition to the next appropriate state
-    elseif key == 'enter' or key == 'return' then
-        if gameState == 'start' then
-            gameState = 'serve'
-        elseif gameState == 'serve' then
-            gameState = 'play'
-        elseif gameState == 'done' then
-            -- game is simply in a restart phase here, but will set the serving
-            -- player to the opponent of whomever won for fairness!
-            gameState = 'serve'
-
-            ball:reset()
-
-            -- reset scores to 0
-            player1Score = 0
-            player2Score = 0
-
-            -- decide serving player as the opposite of who won
-            if winningPlayer == 1 then
-                servingPlayer = 2
-            else
-                servingPlayer = 1
-            end
-        end
-    end
-end
 
 --[[
     Called each frame after update; is responsible simply for
@@ -309,19 +349,50 @@ function love.draw()
     love.graphics.clear(40/255, 45/255, 52/255, 255/255)
     
     -- render different things depending on which part of the game we're in
-    if gameState == 'start' then
+    if gameState == 'home' then
+        love.graphics.setFont(smallFont)
+        love.graphics.printf('press escape to close', 0, 10, VIRTUAL_WIDTH, 'right')
+        love.graphics.printf('Welcome to Pong!', 0, 10, VIRTUAL_WIDTH, 'center')
+        love.graphics.printf('Choose your mode!\n', 0, 20, VIRTUAL_WIDTH, 'center')
+        love.graphics.printf('PvP(1) \n PvE(2)', 0, 30, VIRTUAL_WIDTH, 'center')    
+        if mode == '1' then
+            gameMode = 'pvp'
+            gameState = 'start'
+        elseif mode == '2' then
+            gameMode = 'pvAI'
+            gameState = 'difficulty'
+        end
+    elseif gameState == 'difficulty' then
+        love.graphics.setFont(smallFont)
+        love.graphics.printf('press escape to go back', 0, 10, VIRTUAL_WIDTH, 'right')
+        love.graphics.printf('Welcome to PongAI!', 0, 10, VIRTUAL_WIDTH, 'center')
+        love.graphics.printf('Choose your difficulty!\n', 0, 20, VIRTUAL_WIDTH, 'center')
+        love.graphics.printf('Easy (1) \n Hard (2) \n Imposible (3)', 0, 30, VIRTUAL_WIDTH, 'center')  
+    elseif gameState == 'start' then
         -- UI messages
         love.graphics.setFont(smallFont)
-        love.graphics.printf('Welcome to Pong!', 0, 10, VIRTUAL_WIDTH, 'center')
+        love.graphics.printf('press escape to go back', 0, 10, VIRTUAL_WIDTH, 'right')
+        love.graphics.printf('Game Start!', 0, 10, VIRTUAL_WIDTH, 'center')
         love.graphics.printf('Press Enter to begin!', 0, 20, VIRTUAL_WIDTH, 'center')
     elseif gameState == 'serve' then
         -- UI messages
         love.graphics.setFont(smallFont)
+        love.graphics.printf('press escape to go back', 0, 10, VIRTUAL_WIDTH, 'right')
         love.graphics.printf('Player ' .. tostring(servingPlayer) .. "'s serve!", 
             0, 10, VIRTUAL_WIDTH, 'center')
         love.graphics.printf('Press Enter to serve!', 0, 20, VIRTUAL_WIDTH, 'center')
+
     elseif gameState == 'play' then
         -- no UI messages to display in play
+    elseif gameState == 'easy' then
+        diff_speed = 3
+        gameState = 'serve'
+    elseif gameState == 'hard' then
+        diff_speed = 2
+        gameState = 'serve'
+    elseif gameState == 'impossible' then
+        diff_speed = 1
+        gameState = 'serve'        
     elseif gameState == 'done' then
         -- UI messages
         love.graphics.setFont(largeFont)
@@ -329,6 +400,8 @@ function love.draw()
             0, 10, VIRTUAL_WIDTH, 'center')
         love.graphics.setFont(smallFont)
         love.graphics.printf('Press Enter to restart!', 0, 30, VIRTUAL_WIDTH, 'center')
+        love.graphics.printf('Press escape to return to main screen!', 0, 40, VIRTUAL_WIDTH, 'center')
+
     end
 
     -- show the score before ball is rendered so it can move over the text
@@ -367,3 +440,24 @@ function displayFPS()
     love.graphics.print('FPS: ' .. tostring(love.timer.getFPS()), 10, 10)
     love.graphics.setColor(255, 255, 255, 255)
 end
+
+function player1Move(m , d)
+    if m == 1 then
+        if love.keyboard.isDown('w') then
+            player1.dy = -PADDLE_SPEED
+        elseif love.keyboard.isDown('s') then
+            player1.dy = PADDLE_SPEED
+        else
+            player1.dy = 0
+        end
+    elseif m == 2 then
+        if player1.y > ball.y then
+           player1.dy = -PADDLE_SPEED/diff_speed
+        elseif player1.y < ball.y then
+            player1.dy = PADDLE_SPEED/diff_speed
+        else
+            player1.dy = 0
+        end
+    end    
+end    
+
